@@ -1,0 +1,15 @@
+{
+  "ipc_socket_path": "/tmp/fpvcar_control.sock",
+  "pins": {
+    "fl_pin_a": 17,
+    "fl_pin_b": 27,
+    "fr_pin_a": 22,
+    "fr_pin_b": 23,
+    "bl_pin_a": 24,
+    "bl_pin_b": 25,
+    "br_pin_a": 5,
+    "br_pin_b": 6,
+    "stby_pin": 26
+  }
+}
+

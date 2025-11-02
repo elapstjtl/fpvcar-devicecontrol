@@ -5,6 +5,7 @@
 #include <tl/expected.hpp>
 
 namespace fpvcar::device_control {
+    // 定义一个回调类型：const输入 string (请求字符串), 输出 string (响应字符串)
     using IpcCallback = std::function<std::string(const std::string&)>;
 
     class IpcServer {
@@ -42,11 +43,11 @@ namespace fpvcar::device_control {
         void stop();
 
     private:
-        std::string m_socket_path;
-        IpcCallback m_callback;
-        int m_listen_fd;
-        std::atomic<bool> m_running;
-        bool m_prepared{false};
+        std::string m_socket_path; // Unix 域套接字文件路径
+        IpcCallback m_callback; // 处理客户端请求的回调函数，接收 JSON 字符串并返回响应 JSON 字符串
+        int m_listen_fd; // 监听文件描述符
+        std::atomic<bool> m_running; // 运行状态
+        bool m_prepared{false}; // 是否已准备好
     };
 }
 

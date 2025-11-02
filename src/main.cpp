@@ -35,6 +35,7 @@ int main(int argc, char** argv) {
     (void)argv;
 
     // 注册信号处理器：捕获 Ctrl+C (SIGINT) 和终止信号 (SIGTERM)
+    // 当收到 SIGINT 或 SIGTERM 信号时，调用 signal_handler 函数
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 

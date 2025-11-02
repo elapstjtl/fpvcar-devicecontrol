@@ -19,7 +19,7 @@ tl::expected<void, std::string> IpcServer::prepare() {
     // 删除已存在的套接字文件（如果存在）
     ::unlink(m_socket_path.c_str());
 
-    // 创建 Unix 域流式套接字（SOCK_STREAM 对应 TCP 语义）
+    // 创建 Unix 域流式套接字（AF_UNIX:本机IPC通信  SOCK_STREAM：可靠的TCP）
     m_listen_fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
     if (m_listen_fd < 0) {
         return tl::unexpected(std::string("Failed to create socket: ") + std::strerror(errno));
@@ -27,7 +27,7 @@ tl::expected<void, std::string> IpcServer::prepare() {
 
     // 初始化套接字地址结构
     sockaddr_un addr{};
-    std::memset(&addr, 0, sizeof(addr));
+    std::memset(&addr, 0, sizeof(addr)); // 将addr内存清零
     addr.sun_family = AF_UNIX;
     // 将路径复制到地址结构，注意 sun_path 长度限制
     std::snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", m_socket_path.c_str());
@@ -66,13 +66,11 @@ void IpcServer::run() {
         int client_fd = ::accept(m_listen_fd, nullptr, nullptr);
         if (client_fd < 0) {
             // 如果服务器已停止，退出循环
-            if (!m_running.load()) break; // 可能是 stop() 触发的关闭
-            // 可暂时忽略被信号中断的错误，继续下一次 accept
+            if (!m_running.load()) break; // 如果是stop() 触发的关闭，则退出循环
+            // 如果是被信号中断的错误，则继续下一次 accept
             continue;
         }
-
         // 读取整个请求（每次连接一个请求）
-        // 使用循环读取，直到读取完整数据或缓冲区不满（表示读取完成）
         std::vector<char> buffer(4096);
         std::string request;
         ssize_t n = 0;

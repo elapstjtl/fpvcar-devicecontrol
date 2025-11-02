@@ -8,20 +8,20 @@ namespace fpvcar::device_control {
 DeviceControlService::DeviceControlService(const config::AppConfig& config)
     : m_config(config),
       // 初始化 GPIO 控制器，传入 GPIO 芯片名称、引脚配置和消费者名称
-      m_controller(
-          fpvcar::config::GPIO_CHIP_NAME,
-          m_config.pins,
-          fpvcar::config::GPIO_CONSUMER_NAME
-      ),
-      // 初始化请求处理器，传入控制器引用
-      m_handler(m_controller),
-      // 初始化 IPC 服务器，使用 lambda 捕获 this 并将请求转发给处理器
-      m_server(
-          m_config.ipc_socket_path,
-          [this](const std::string& req) {
-              return m_handler.handle_request(req);
-          }
-      )
+        m_controller(
+            fpvcar::config::GPIO_CHIP_NAME,
+            m_config.pins,
+            fpvcar::config::GPIO_CONSUMER_NAME
+        ),
+        // 初始化请求处理器，传入控制器引用
+        m_handler(m_controller),
+        // 初始化 IPC 服务器，使用 lambda 捕获 this 并将请求转发给处理器
+        m_server(
+            m_config.ipc_socket_path,
+            [this](const std::string& req) {
+                return m_handler.handle_request(req);
+            }
+        )
 {
     std::cout << "DeviceControlService initialized." << std::endl;
 }

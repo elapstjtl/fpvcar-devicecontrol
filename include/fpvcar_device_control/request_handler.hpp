@@ -24,8 +24,11 @@ namespace fpvcar::device_control {
         std::string handle_request(const std::string& json_request);
 
     private:
+        // 控制器
         fpvcar::control::FpvCarController& m_controller;
-
+        // 声明一个“动作映射表”，将动作字符串映射到对应的函数对象
+        std::map<std::string, std::function<void()>> m_action_map;
+        
         /**
          * @brief 创建成功响应的 JSON 字符串
          * @param message 成功消息

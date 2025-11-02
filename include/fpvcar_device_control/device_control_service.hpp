@@ -44,11 +44,11 @@ namespace fpvcar::device_control {
         void stop();
 
     private:
-        config::AppConfig m_config;
-        fpvcar::control::FpvCarController m_controller;
-        RequestHandler m_handler;
-        IpcServer m_server;
-        std::thread m_server_thread;
+        config::AppConfig m_config; // 应用配置
+        fpvcar::control::FpvCarController m_controller; // 控制器
+        RequestHandler m_handler; // 请求处理器
+        IpcServer m_server; // IPC 服务器
+        std::thread m_server_thread; // 服务器线程
     };
 }
 

@@ -7,7 +7,15 @@ using nlohmann::json;
 namespace fpvcar::device_control {
 
 RequestHandler::RequestHandler(fpvcar::control::FpvCarController& car)
-    : m_controller(car) {}
+    : m_controller(car) {
+        // “注册”所有可用的动作
+    m_action_map["moveForward"]  = [this]() { m_controller.moveForward(); };
+    m_action_map["moveBackward"] = [this]() { m_controller.moveBackward(); };
+    m_action_map["turnLeft"]     = [this]() { m_controller.turnLeft(); };
+    m_action_map["turnRight"]    = [this]() { m_controller.turnRight(); };
+    m_action_map["stopAll"]      = [this]() { m_controller.stopAll(); };
+    // 添加新动作
+    }
 
 std::string RequestHandler::handle_request(const std::string& json_request) {
     // 解析 JSON 请求，禁用异常机制，通过 is_discarded 判断解析失败
@@ -22,28 +30,21 @@ std::string RequestHandler::handle_request(const std::string& json_request) {
         return create_error_response("INVALID_JSON", "Missing 'action' field");
     }
 
-    // Lambda 辅助函数：安全执行控制器操作并统一错误处理
+    // 定义一个 lambda 函数，用于执行函数对象，并返回结果
     auto exec = [&](auto&& call, const char* ok_msg) {
         auto res = safe_call(call);
         if (!res) return create_error_response("HARDWARE_ERROR", res.error());
         return create_success_response(ok_msg);
     };
 
-    // 根据 action 类型执行相应的控制器操作
-    if (action == "moveForward") {
-        return exec([&]{ m_controller.moveForward(); }, "moveForward executed");
-    } else if (action == "moveBackward") {
-        return exec([&]{ m_controller.moveBackward(); }, "moveBackward executed");
-    } else if (action == "turnLeft") {
-        return exec([&]{ m_controller.turnLeft(); }, "turnLeft executed");
-    } else if (action == "turnRight") {
-        return exec([&]{ m_controller.turnRight(); }, "turnRight executed");
-    } else if (action == "stopAll") {
-        return exec([&]{ m_controller.stopAll(); }, "stopAll executed");
+    // 查找 action 对应的函数对象，如果不存在则返回错误响应
+    auto it = m_action_map.find(action);
+    if (it == m_action_map.end()) {
+        return create_error_response("INVALID_ACTION", "Unknown action: " + action);
     }
 
-    // 未知的 action，返回错误响应
-    return create_error_response("INVALID_ACTION", std::string("Unknown action: ") + action);
+    std::string success_message = action + " executed"; 
+    return exec(it->second, success_message.c_str());
 }
 
 std::string RequestHandler::create_success_response(const std::string& message) {
@@ -74,6 +75,6 @@ tl::expected<void, std::string> RequestHandler::safe_call(const std::function<vo
     }
 }
 
-}
+}// namespace fpvcar::device_control
 
 

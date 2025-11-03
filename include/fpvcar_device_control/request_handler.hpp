@@ -3,6 +3,7 @@
 #include <tl/expected.hpp>
 #include <functional>
 #include "fpvcar-motor/fpvcar_controller.hpp"
+#include "fpvcar_device_control/watch_dog.hpp"
 
 namespace fpvcar::device_control {
     class RequestHandler {
@@ -28,6 +29,7 @@ namespace fpvcar::device_control {
         fpvcar::control::FpvCarController& m_controller;
         // 声明一个“动作映射表”，将动作字符串映射到对应的函数对象
         std::map<std::string, std::function<void()>> m_action_map;
+        SoftwareWatchdog m_watchdog; // 看门狗
         
         /**
          * @brief 创建成功响应的 JSON 字符串

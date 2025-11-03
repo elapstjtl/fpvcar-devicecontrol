@@ -7,17 +7,23 @@ using nlohmann::json;
 namespace fpvcar::device_control {
 
 RequestHandler::RequestHandler(fpvcar::control::FpvCarController& car)
-    : m_controller(car) {
-        // “注册”所有可用的动作
+    : m_controller(car),
+      m_watchdog(std::chrono::milliseconds(5000), [this]() { m_controller.stopAll(); }) {
+    // "注册"所有可用的动作
     m_action_map["moveForward"]  = [this]() { m_controller.moveForward(); };
     m_action_map["moveBackward"] = [this]() { m_controller.moveBackward(); };
     m_action_map["turnLeft"]     = [this]() { m_controller.turnLeft(); };
     m_action_map["turnRight"]    = [this]() { m_controller.turnRight(); };
     m_action_map["stopAll"]      = [this]() { m_controller.stopAll(); };
-    // 添加新动作
-    }
+    
+    // 启动看门狗监控
+    m_watchdog.start();
+}
 
 std::string RequestHandler::handle_request(const std::string& json_request) {
+    // 喂看门狗：每次收到请求时重置超时计时器
+    m_watchdog.feed();
+    
     // 解析 JSON 请求，禁用异常机制，通过 is_discarded 判断解析失败
     auto data = json::parse(json_request, nullptr, /*allow_exceptions=*/false);
     if (data.is_discarded()) {
@@ -37,10 +43,15 @@ std::string RequestHandler::handle_request(const std::string& json_request) {
         return create_success_response(ok_msg);
     };
 
-    // 查找 action 对应的函数对象，如果不存在则返回错误响应
+    // 查找 action 对应的函数对象，如果不存在则执行 stopAll 并返回错误响应
     auto it = m_action_map.find(action);
     if (it == m_action_map.end()) {
-        return create_error_response("INVALID_ACTION", "Unknown action: " + action);
+        // 收到无效动作时，为了安全起见，执行 stopAll 停止所有动作
+        auto stop_res = safe_call([this]() { m_controller.stopAll(); });
+        if (!stop_res) {
+            return create_error_response("HARDWARE_ERROR", "Unknown action and Failed to stop: " + stop_res.error());
+        }
+        return create_error_response("INVALID_ACTION", "Unknown action: " + action + ", stopped all movements for safety");
     }
 
     std::string success_message = action + " executed"; 

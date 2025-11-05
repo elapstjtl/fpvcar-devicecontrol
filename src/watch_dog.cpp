@@ -11,13 +11,28 @@
 namespace fpvcar::device_control {
 
 void SoftwareWatchdog::start() {
-    m_stop = false;
-    m_kicked = true; // 初始为true，防止启动时立即超时
+    // 如果线程已经在运行，先停止它
+    // 注意：这里直接设置 m_stop 并 join，不使用 stop() 避免可能的竞争
+    if (m_thread.joinable()) {
+        m_stop.store(true, std::memory_order_relaxed);
+        m_thread.join();
+    }
+    
+    // 重置状态并启动新线程
+    m_stop.store(false, std::memory_order_relaxed);
+    m_kicked.store(true, std::memory_order_relaxed); // 初始为true，防止启动时立即超时
     m_thread = std::thread(&SoftwareWatchdog::watchLoop, this);
 }
 
 void SoftwareWatchdog::stop() {
-    m_stop = true;
+    // 原子地设置停止标志，如果已经是 true 则直接返回（避免重复停止）
+    bool expected = false;
+    if (!m_stop.compare_exchange_strong(expected, true)) {
+        // 已经停止，直接返回
+        return;
+    }
+    
+    // 等待线程结束
     if (m_thread.joinable()) {
         m_thread.join();
     }
@@ -39,12 +54,13 @@ void SoftwareWatchdog::watchLoop() {
 
         if (!wasKicked) {
             // 3. 超时！
-            std::cerr << "!!! 软件看门狗超时 !!!" << std::endl;
+            std::cerr << "!!! 软件看门狗超时 停止所有电机 !!!" << std::endl;
             if (m_onTimeoutCallback) {
                 m_onTimeoutCallback();
             }
-            // 超时后，我们也停止看门狗线程
-            m_stop = true; 
+            // 超时后重置标志，继续监控（而不是停止看门狗）
+            // 这样即使触发了一次，如果之后再次5秒无请求，还能再次触发
+            m_kicked.store(true, std::memory_order_relaxed); // 重置标志，防止立即再次超时
         }
     }
 }

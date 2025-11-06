@@ -1,12 +1,116 @@
 #include "fpvcar_device_control/ipc_server.hpp"
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <arpa/inet.h>
 #include <unistd.h>
+#include <errno.h>
 #include <cstring>
 #include <iostream>
 #include <vector>
 
 namespace fpvcar::device_control {
+
+namespace {
+    /**
+     * @brief 从套接字读取指定长度的数据
+     * @param fd 文件描述符
+     * @param buffer 缓冲区
+     * @param size 要读取的字节数
+     * @return 成功返回读取的字节数，失败返回-1，连接关闭返回0
+     */
+    ssize_t read_exact(int fd, void* buffer, size_t size) {
+        char* ptr = static_cast<char*>(buffer);
+        size_t left = size;
+        while (left > 0) {
+            ssize_t n = ::read(fd, ptr, left);
+            if (n < 0) {
+                if (errno == EINTR) continue; // 被信号中断，重试
+                return -1; // 读取错误
+            }
+            if (n == 0) return 0; // 连接关闭
+            ptr += n;
+            left -= static_cast<size_t>(n);
+        }
+        return static_cast<ssize_t>(size);
+    }
+
+    /**
+     * @brief 向套接字写入指定长度的数据
+     * @param fd 文件描述符
+     * @param buffer 缓冲区
+     * @param size 要写入的字节数
+     * @return 成功返回写入的字节数，失败返回-1
+     */
+    ssize_t write_exact(int fd, const void* buffer, size_t size) {
+        const char* ptr = static_cast<const char*>(buffer);
+        size_t left = size;
+        while (left > 0) {
+            ssize_t n = ::write(fd, ptr, left);
+            if (n < 0) {
+                if (errno == EINTR) continue; // 被信号中断，重试
+                return -1; // 写入错误
+            }
+            ptr += n;
+            left -= static_cast<size_t>(n);
+        }
+        return static_cast<ssize_t>(size);
+    }
+
+    /**
+     * @brief 读取一条带长度前缀的消息
+     * @param fd 文件描述符
+     * @return 成功返回消息内容，失败返回空字符串
+     */
+    std::string read_message(int fd) {
+        // 先读取4字节长度前缀（网络字节序）
+        uint32_t length_net;
+        ssize_t n = read_exact(fd, &length_net, sizeof(length_net));
+        if (n != sizeof(length_net)) {
+            return ""; // 读取失败或连接关闭
+        }
+        
+        // 转换为主机字节序
+        uint32_t length = ntohl(length_net);
+        
+        // 检查长度是否合理（防止恶意请求）
+        if (length > 1024 * 1024) { // 最大1MB
+            return ""; // 长度过大，拒绝
+        }
+        
+        // 读取消息内容
+        std::vector<char> buffer(length);
+        n = read_exact(fd, buffer.data(), length);
+        if (n != static_cast<ssize_t>(length)) {
+            return ""; // 读取失败或连接关闭
+        }
+        
+        return std::string(buffer.data(), length);
+    }
+
+    /**
+     * @brief 写入一条带长度前缀的消息
+     * @param fd 文件描述符
+     * @param message 消息内容
+     * @return 成功返回true，失败返回false
+     */
+    bool write_message(int fd, const std::string& message) {
+        // 将长度转换为网络字节序
+        uint32_t length = static_cast<uint32_t>(message.size());
+        uint32_t length_net = htonl(length);
+        
+        // 先写入长度前缀
+        if (write_exact(fd, &length_net, sizeof(length_net)) != sizeof(length_net)) {
+            return false;
+        }
+        
+        // 再写入消息内容
+        if (write_exact(fd, message.data(), message.size()) != static_cast<ssize_t>(message.size())) {
+            return false;
+        }
+        
+        return true;
+    }
+}
 
 IpcServer::IpcServer(const std::string& socket_path, IpcCallback callback)
     : m_socket_path(socket_path), m_callback(std::move(callback)), m_listen_fd(-1), m_running(false) {}
@@ -70,36 +174,30 @@ void IpcServer::run() {
             // 如果是被信号中断的错误，则继续下一次 accept
             continue;
         }
-        // 读取整个请求（每次连接一个请求）
-        std::vector<char> buffer(4096);
-        std::string request;
-        ssize_t n = 0;
-        while ((n = ::read(client_fd, buffer.data(), buffer.size())) > 0) {
-            request.append(buffer.data(), static_cast<size_t>(n));
-            // 如果读取的字节数小于缓冲区大小，说明数据已读完
-            if (n < static_cast<ssize_t>(buffer.size())) {
-                // 简单策略：认为客户端已发送完
+
+        // 在单个连接上循环处理多个请求（保持长连接）
+        while (m_running.load()) {
+            // 读取带长度前缀的请求消息
+            std::string request = read_message(client_fd);
+            if (request.empty()) {
+                // 读取失败或连接关闭，退出内层循环
                 break;
             }
-        }
 
-        // 调用回调函数处理请求，捕获所有异常
-        std::string response;
-        try {
-            response = m_callback ? m_callback(request) : std::string("{\"status\":\"error\",\"error_code\":\"NO_HANDLER\",\"message\":\"No handler set\"}");
-        } catch (const std::exception& e) {
-            // 如果回调函数抛出异常，返回服务器错误响应
-            response = std::string("{\"status\":\"error\",\"error_code\":\"SERVER_ERROR\",\"message\":\"") + e.what() + "\"}";
-        }
+            // 调用回调函数处理请求，捕获所有异常
+            std::string response;
+            try {
+                response = m_callback ? m_callback(request) : std::string("{\"status\":\"error\",\"error_code\":\"NO_HANDLER\",\"message\":\"No handler set\"}");
+            } catch (const std::exception& e) {
+                // 如果回调函数抛出异常，返回服务器错误响应
+                response = std::string("{\"status\":\"error\",\"error_code\":\"SERVER_ERROR\",\"message\":\"") + e.what() + "\"}";
+            }
 
-        // 写回响应：需要处理 write 可能的分片写入情况
-        const char* data = response.data();
-        size_t left = response.size();
-        while (left > 0) {
-            ssize_t wrote = ::write(client_fd, data, left);
-            if (wrote <= 0) break; // 写入失败或连接关闭，退出循环
-            data += wrote;
-            left -= static_cast<size_t>(wrote);
+            // 写入带长度前缀的响应消息
+            if (!write_message(client_fd, response)) {
+                // 写入失败，连接可能已关闭，退出内层循环
+                break;
+            }
         }
 
         // 关闭客户端连接（双向关闭，确保数据发送完成）

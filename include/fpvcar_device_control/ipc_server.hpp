@@ -32,7 +32,8 @@ namespace fpvcar::device_control {
         /**
          * @brief 运行服务器主循环，阻塞调用直到 stop() 被调用
          * @note 必须在调用 prepare() 成功后才能调用此函数
-         * @note 每个客户端连接处理完一个请求后即关闭连接
+         * @note 使用长度前缀协议：消息格式为 [4字节长度（网络字节序）][N字节JSON内容]
+         * @note 每个客户端连接保持长连接，可以处理多个请求-响应循环
          */
         void run();
         

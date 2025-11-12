@@ -55,11 +55,8 @@ void SoftwareWatchdog::watchLoop() {
         if (!wasKicked) {
             // 3. 超时！
             std::cerr << "!!! 软件看门狗超时 停止所有电机 !!!" << std::endl;
-            if (m_onTimeoutCallback) {
-                m_onTimeoutCallback();
-            }
-            // 超时后重置标志，继续监控（而不是停止看门狗）
-            // 这样即使触发了一次，如果之后再次5秒无请求，还能再次触发
+            m_car.stopAll();
+
             m_kicked.store(true, std::memory_order_relaxed); // 重置标志，防止立即再次超时
         }
     }

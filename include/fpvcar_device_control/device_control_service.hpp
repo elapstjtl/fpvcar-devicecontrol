@@ -3,6 +3,7 @@
 #include "fpvcar_device_control/request_handler.hpp"
 #include "fpvcar_device_control/ipc_server.hpp"
 #include "fpvcar-motor/fpvcar_controller.hpp"
+#include "fpvcar_device_control/control_loop.hpp"
 #include <thread>
 #include <memory>
 #include <tl/expected.hpp>
@@ -45,7 +46,9 @@ namespace fpvcar::device_control {
 
     private:
         config::AppConfig m_config; // 应用配置
+        DesiredStateManager m_desired_state_manager; // 期望状态管理器
         fpvcar::control::FpvCarController m_controller; // 控制器
+        ControlLoop m_control_loop; // 控制循环
         RequestHandler m_handler; // 请求处理器
         IpcServer m_server; // IPC 服务器
         std::thread m_server_thread; // 服务器线程

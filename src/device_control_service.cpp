@@ -13,8 +13,10 @@ DeviceControlService::DeviceControlService(const config::AppConfig& config)
             m_config.pins,
             fpvcar::config::GPIO_CONSUMER_NAME
         ),
-        // 初始化请求处理器，传入控制器引用
-        m_handler(m_controller),
+        m_desired_state_manager(),
+        m_control_loop(m_desired_state_manager, m_controller),
+        // 初始化请求处理器，传入期望状态管理器引用
+        m_handler(m_desired_state_manager),
         // 初始化 IPC 服务器，使用 lambda 捕获 this 并将请求转发给处理器
         m_server(
             m_config.ipc_socket_path,
@@ -42,6 +44,9 @@ tl::expected<std::unique_ptr<DeviceControlService>, std::string> DeviceControlSe
 }
 
 tl::expected<void, std::string> DeviceControlService::start() {
+    // 先启动控制循环
+    m_control_loop.start();
+    // 再启动 IPC 服务器
     // 准备 IPC 服务器：创建并绑定套接字
     auto prep = m_server.prepare();
     if (!prep) return tl::unexpected(prep.error());
@@ -52,6 +57,8 @@ tl::expected<void, std::string> DeviceControlService::start() {
 }
 
 void DeviceControlService::stop() {
+    // 关闭控制循环
+    m_control_loop.stop();
     // 停止服务器，这会中断 accept 循环
     m_server.stop();
     

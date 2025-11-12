@@ -2,17 +2,17 @@
 #include <string>
 #include <tl/expected.hpp>
 #include <functional>
-#include "fpvcar-motor/fpvcar_controller.hpp"
-#include "fpvcar_device_control/watch_dog.hpp"
+#include "fpvcar_device_control/control_loop.hpp"
 
 namespace fpvcar::device_control {
     class RequestHandler {
     public:
         /**
-         * @brief 构造函数，初始化请求处理器
-         * @param car 小车控制器引用，用于执行具体的设备控制操作
-         */
-        explicit RequestHandler(fpvcar::control::FpvCarController& car);
+            * @brief 构造函数，初始化请求处理器
+            * @param desired_state_manager 期望状态管理器引用，用于更新期望状态
+            * @note 请求处理器负责解析IPC请求并更新期望状态，不直接操作硬件。硬件操作由 control_loop 线程执行
+        */
+        explicit RequestHandler(DesiredStateManager& desired_state_manager);
         
         /**
          * @brief 处理来自客户端的 JSON 请求
@@ -20,17 +20,12 @@ namespace fpvcar::device_control {
          * @return JSON 格式的响应字符串，包含 "status" 字段（"ok" 或 "error"）
          * @note 支持的 action 包括: moveForward, moveBackward, turnLeft, turnRight, stopAll
          * @note 如果 JSON 解析失败或 action 无效，返回错误响应
-         * @note 所有硬件操作都会被异常捕获，返回错误响应而不是抛出异常
+         * @note 此方法只更新期望状态并立即返回ACK，不等待硬件执行。硬件操作由 control_loop 线程异步执行
          */
         std::string handle_request(const std::string& json_request);
 
     private:
-        // 控制器
-        fpvcar::control::FpvCarController& m_controller;
-        // 声明一个“动作映射表”，将动作字符串映射到对应的函数对象
-        std::map<std::string, std::function<void()>> m_action_map;
-        SoftwareWatchdog m_watchdog; // 看门狗
-        
+        DesiredStateManager& m_desired_state_manager;
         /**
          * @brief 创建成功响应的 JSON 字符串
          * @param message 成功消息
@@ -45,14 +40,6 @@ namespace fpvcar::device_control {
          * @return JSON 格式字符串，包含 status="error", error_code 和 message 字段
          */
         std::string create_error_response(const std::string& code, const std::string& message);
-        
-        /**
-         * @brief 安全调用函数，捕获所有异常并转换为错误返回
-         * @param fn 要执行的无参数函数对象
-         * @return 成功返回 void，失败返回异常信息字符串
-         * @note 用于包装硬件操作，防止异常向上传播
-         */
-        tl::expected<void, std::string> safe_call(const std::function<void()>& fn);
     };
 }
 

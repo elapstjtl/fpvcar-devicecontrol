@@ -87,6 +87,8 @@ add_executable(fpvcar-devicecontrol
     src/request_handler.cpp
     src/config.cpp
     src/watch_dog.cpp
+    src/control_loop.cpp
+    src/desired_state.cpp
 )
 
 # 头文件（本项目对外/内部包含路径）

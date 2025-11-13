@@ -1,3 +1,4 @@
+#pragma once
 #include <tl/expected.hpp>
 #include <string>        
 #include <atomic>        

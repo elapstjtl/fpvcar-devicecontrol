@@ -1,4 +1,4 @@
-#pragma once // 推荐使用 #pragma once 替代 include guards
+#pragma once
 
 #include <thread>
 #include <chrono>
@@ -38,6 +38,12 @@ public:
     * @note 停止控制循环会停止控制循环线程
     */
     void stop();
+
+    /**
+    * @brief 喂看门狗（当接收到新指令时调用）
+    * @note 看门狗用于监控是否长时间没有接收新指令或者执行指令，如果超时会自动停止车辆
+    */
+    void feed_watchdog();
 
 private:
     void run_loop(); // <--- 循环的私有实现

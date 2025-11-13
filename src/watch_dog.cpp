@@ -11,6 +11,7 @@
 namespace fpvcar::device_control {
 
 void SoftwareWatchdog::start() {
+    std::cout << "SoftwareWatchdog start" << std::endl;
     // 如果线程已经在运行，先停止它
     // 注意：这里直接设置 m_stop 并 join，不使用 stop() 避免可能的竞争
     if (m_thread.joinable()) {
@@ -55,6 +56,7 @@ void SoftwareWatchdog::watchLoop() {
         if (!wasKicked) {
             // 3. 超时！
             std::cerr << "!!! 软件看门狗超时 停止所有电机 !!!" << std::endl;
+            m_desired_state_manager.set_desired_state(DesiredState::STOPPING);
             m_car.stopAll();
 
             m_kicked.store(true, std::memory_order_relaxed); // 重置标志，防止立即再次超时

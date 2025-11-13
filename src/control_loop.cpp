@@ -8,7 +8,7 @@ ControlLoop::ControlLoop(DesiredStateManager& desired_state_manager, control::Fp
       m_car(car),
       m_old_desired_state(DesiredState::STOPPING), // <--- 正确初始化
       m_is_running(false), // <--- 构造时为 false
-      m_watchdog(std::chrono::milliseconds(5000), car)
+      m_watchdog(std::chrono::milliseconds(5000), car, desired_state_manager)
 {}
 
 ControlLoop::~ControlLoop() {
@@ -44,13 +44,16 @@ void ControlLoop::stop() {
     std::cout << "Control loop stopped." << std::endl;
 }
 
+void ControlLoop::feed_watchdog() {
+    m_watchdog.feed();
+}
+
 void ControlLoop::run_loop() {
     // 重置循环的起始时间
     m_next_loop_start_time = std::chrono::steady_clock::now();
 
     while (m_is_running.load(std::memory_order_relaxed)) {
         try {
-            m_watchdog.feed();
             // --- 1. 获取状态 (安全地) ---
             DesiredState desired_state = m_desired_state_manager.get_desired_state();
 

@@ -18,10 +18,14 @@ DeviceControlService::DeviceControlService(const config::AppConfig& config)
         // 初始化请求处理器，传入期望状态管理器引用
         m_handler(m_desired_state_manager),
         // 初始化 IPC 服务器，使用 lambda 捕获 this 并将请求转发给处理器
+        // 当接收到新指令时，处理请求并喂看门狗
         m_server(
             m_config.ipc_socket_path,
             [this](const std::string& req) {
-                return m_handler.handle_request(req);
+                std::string response = m_handler.handle_request(req);
+                // 只有在成功处理请求后才喂看门狗（即使请求格式错误，也算收到了指令）
+                m_control_loop.feed_watchdog();
+                return response;
             }
         )
 {

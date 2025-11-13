@@ -5,6 +5,8 @@
 #include <atomic>
 #include <functional> // 用于 std::function
 #include "fpvcar-motor/fpvcar_controller.hpp"
+#include "fpvcar_device_control/desired_state.hpp"
+
 /**
  * @brief 一个简单的C++软件看门狗类 会直接调用底层控制库停止运动
  */
@@ -14,11 +16,13 @@ public:
     /**
      * @param timeout 超时时间
      * @param car 小车控制器引用，超时后直接调用 car.stopAll() 停止所有电机
+     * @param desired_state_manager 期望状态管理器引用，超时后直接调用 desired_state_manager.set_desired_state(DesiredState::STOPPING) 更改状态
      * @note 看门狗作为独立的安全机制，不依赖 control_loop，即使 control_loop 卡死也能直接停止硬件
      */
-    SoftwareWatchdog(std::chrono::milliseconds timeout, control::FpvCarController& car)
+    SoftwareWatchdog(std::chrono::milliseconds timeout, control::FpvCarController& car, DesiredStateManager& desired_state_manager)
         : m_timeout(timeout),
           m_car(car),
+          m_desired_state_manager(desired_state_manager),
           m_stop(false),
           m_kicked(false) {}
 
@@ -48,6 +52,7 @@ private:
     void watchLoop();
 
     control::FpvCarController& m_car;
+    DesiredStateManager& m_desired_state_manager;
     std::chrono::milliseconds m_timeout; // 超时时间
     std::atomic<bool> m_stop; // 停止标志
     std::atomic<bool> m_kicked; // 被喂狗标志

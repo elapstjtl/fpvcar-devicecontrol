@@ -30,6 +30,14 @@ std::string RequestHandler::handle_request(const std::string& json_request) {
         m_desired_state_manager.set_desired_state(DesiredState::TURNING_LEFT);
     } else if (action == "turnRight") {
         m_desired_state_manager.set_desired_state(DesiredState::TURNING_RIGHT);
+    } else if (action == "moveForwardAndTurnLeft") {
+        m_desired_state_manager.set_desired_state(DesiredState::MOVING_FORWARD_AND_TURN_LEFT);
+    } else if (action == "moveForwardAndTurnRight") {
+        m_desired_state_manager.set_desired_state(DesiredState::MOVING_FORWARD_AND_TURN_RIGHT);
+    } else if (action == "moveBackwardAndTurnLeft") {
+        m_desired_state_manager.set_desired_state(DesiredState::MOVING_BACKWARD_AND_TURN_LEFT);
+    } else if (action == "moveBackwardAndTurnRight") {
+        m_desired_state_manager.set_desired_state(DesiredState::MOVING_BACKWARD_AND_TURN_RIGHT);
     } else if (action == "stopAll") {
         m_desired_state_manager.set_desired_state(DesiredState::STOPPING);
     } else {

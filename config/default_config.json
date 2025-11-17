@@ -1,15 +1,21 @@
 {
   "ipc_socket_path": "/tmp/fpvcar_control.sock",
-  "pins": {
-    "fl_pin_a": 17,
-    "fl_pin_b": 27,
-    "fr_pin_a": 22,
-    "fr_pin_b": 23,
-    "bl_pin_a": 24,
-    "bl_pin_b": 25,
-    "br_pin_a": 5,
-    "br_pin_b": 6,
-    "stby_pin": 26
+  "i2c_device_path": "/dev/i2c-1",
+  "pwm_frequency": 10000.0,
+  "pca9685_address": 64,
+  "channels": {
+    "fl_channel_speed": 12,
+    "fl_channel_1": 0,
+    "fl_channel_2": 1,
+    "fr_channel_speed": 13,
+    "fr_channel_1": 2,
+    "fr_channel_2": 3,
+    "bl_channel_speed": 14,
+    "bl_channel_1": 4,
+    "bl_channel_2": 5,
+    "br_channel_speed": 15,
+    "br_channel_1": 6,
+    "br_channel_2": 7
   }
 }
 

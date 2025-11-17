@@ -24,6 +24,10 @@ namespace fpvcar::device_control {
         MOVING_BACKWARD,
         TURNING_LEFT,
         TURNING_RIGHT,
+        MOVING_FORWARD_AND_TURN_LEFT,
+        MOVING_FORWARD_AND_TURN_RIGHT,
+        MOVING_BACKWARD_AND_TURN_LEFT,
+        MOVING_BACKWARD_AND_TURN_RIGHT,
         STOPPING
     };
 

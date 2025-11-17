@@ -3,19 +3,22 @@ cmake_minimum_required(VERSION 3.14)
 project(fpvcar-devicecontrol VERSION 1.0.0 LANGUAGES CXX)
 
 # =============================================================================
-# FPV motor CMakeLists.txt
+# FPV devicecontrol CMakeLists.txt
 # =============================================================================
 #
 # 构建模式说明：
-# 1. 开发环境：cmake -DUSE_FETCHCONTENT=ON ..
-#    - 自动下载 tl::expected 和 CLI11 依赖库
+# 1. 开发环境：cmake ..
+#    - 使用 git submodule 获取第三方库（fpvcar-motor）
+#    - fpvcar-motor 本身包含 expected 作为 submodule
+#    - 需要先执行: git submodule update --init --recursive
 #    - 此时要求系统已安装 libgpiod (sudo apt install libgpiod-dev)
 #    - 用于本地开发和测试
 #
 # 2. 生产环境（Yocto）：cmake ..
-#    - 使用 Yocto sysroot 中的所有库
+#    - 使用 Yocto sysroot 中的库
 #    - 需要在 .bb 文件中添加:
-#      DEPENDS += "tl-expected cli11 libgpiod-cxx"
+#      DEPENDS += "nlohmann-json libgpiod-cxx"
+#    - fpvcar-motor 通过 submodule 引入
 #    - 用于嵌入式系统构建
 #
 # =============================================================================
@@ -39,44 +42,27 @@ endif()
 # 查找 CMake 依赖发现工具（若需要 pkg-config 的其它系统库可启用）
 # find_package(PkgConfig REQUIRED)
 
-# --- 1. 条件化处理 C++/CMake 依赖 ---
-# 检查是否启用 FetchContent（用于开发环境）
-option(USE_FETCHCONTENT "Use FetchContent to download dependencies" OFF)
+# --- 1. 处理第三方依赖 ---
+# 使用 git submodule 引入 fpvcar-motor
+# fpvcar-motor 本身包含 expected 作为 submodule
+set(FPVCAR_MOTOR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/fpvcar-motor)
 
-if(USE_FETCHCONTENT)
-    # 开发环境：使用 FetchContent 下载依赖
-    message(STATUS "Using FetchContent")
-    include(FetchContent)
-    
-    # tl::expected
-    FetchContent_Declare(
-        expected
-        GIT_REPOSITORY https://github.com/TartanLlama/expected.git
-        GIT_TAG v1.1.0
-    )
-    FetchContent_MakeAvailable(expected)
-    add_library(TartanLlama::expected ALIAS expected)
-
-    # nlohmann_json (header-only)
-    FetchContent_Declare(
-        nlohmann_json
-        GIT_REPOSITORY https://github.com/nlohmann/json.git
-        GIT_TAG v3.11.3
-    )
-    FetchContent_MakeAvailable(nlohmann_json)
-    add_library(nlohmann_json::nlohmann_json ALIAS nlohmann_json)
-    
-    # 从源码引入 fpvcar-motor（开发环境，使用相对路径）
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../fpvcar-motor ${CMAKE_CURRENT_BINARY_DIR}/_deps/fpvcar-motor)
-
-    
-else()
-    # 生产/Yocto 环境：使用 Yocto sysroot 中的库
-    message(STATUS "Using find_package for external deps (Yocto build)")
-    # find_package(expected REQUIRED)
-    find_package(nlohmann_json REQUIRED)
-    find_package(fpvcar-motor REQUIRED)
+if(NOT EXISTS ${FPVCAR_MOTOR_DIR}/CMakeLists.txt)
+    message(FATAL_ERROR "fpvcar-motor submodule not found. Please run: git submodule update --init --recursive")
 endif()
+
+message(STATUS "Using fpvcar-motor from submodule: ${FPVCAR_MOTOR_DIR}")
+add_subdirectory(${FPVCAR_MOTOR_DIR} ${CMAKE_CURRENT_BINARY_DIR}/libs/fpvcar-motor)
+
+# nlohmann_json: 使用 git submodule 引入
+set(NLOHMANN_JSON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/nlohmann_json)
+
+if(NOT EXISTS ${NLOHMANN_JSON_DIR}/CMakeLists.txt)
+    message(FATAL_ERROR "nlohmann_json submodule not found. Please run: git submodule update --init --recursive")
+endif()
+
+message(STATUS "Using nlohmann_json from submodule: ${NLOHMANN_JSON_DIR}")
+add_subdirectory(${NLOHMANN_JSON_DIR} ${CMAKE_CURRENT_BINARY_DIR}/libs/nlohmann_json)
 
 
 # --- 定义可执行程序目标 ---
@@ -101,9 +87,7 @@ target_include_directories(fpvcar-devicecontrol
 target_link_libraries(fpvcar-devicecontrol
     PRIVATE
         fpvcar::motor
-        nlohmann_json::nlohmann_json
 )
 
-if(USE_FETCHCONTENT)
-    target_link_libraries(fpvcar-devicecontrol PRIVATE TartanLlama::expected)
-endif()
+# nlohmann_json 链接
+target_link_libraries(fpvcar-devicecontrol PRIVATE nlohmann_json::nlohmann_json)

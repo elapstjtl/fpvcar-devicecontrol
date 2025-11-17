@@ -32,6 +32,10 @@
   * `"moveBackward"`
   * `"turnLeft"`
   * `"turnRight"`
+  * `"moveForwardAndTurnLeft"`
+  * `"moveForwardAndTurnRight"`
+  * `"moveBackwardAndTurnLeft"`
+  * `"moveBackwardAndTurnRight"`
   * `"stopAll"`
 
 #### 2\. 返回什么 (Response)

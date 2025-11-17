@@ -7,11 +7,12 @@ namespace fpvcar::device_control {
 
 DeviceControlService::DeviceControlService(const config::AppConfig& config)
     : m_config(config),
-      // 初始化 GPIO 控制器，传入 GPIO 芯片名称、引脚配置和消费者名称
+      // 初始化 I2C/PCA9685 控制器，传入 I2C 设备路径、通道配置、PWM 频率和 I2C 地址
         m_controller(
-            fpvcar::config::GPIO_CHIP_NAME,
-            m_config.pins,
-            fpvcar::config::GPIO_CONSUMER_NAME
+            m_config.i2c_device_path,
+            m_config.channels,
+            m_config.pwm_frequency,
+            m_config.pca9685_address
         ),
         m_desired_state_manager(),
         m_control_loop(m_desired_state_manager, m_controller),
@@ -42,7 +43,7 @@ tl::expected<std::unique_ptr<DeviceControlService>, std::string> DeviceControlSe
         auto ptr = std::unique_ptr<DeviceControlService>(new DeviceControlService(config));
         return ptr;
     } catch (const std::exception& e) {
-        // 捕获构造函数中可能抛出的异常（如 GPIO 初始化失败），转换为错误返回
+        // 捕获构造函数中可能抛出的异常（如 I2C 初始化失败），转换为错误返回
         return tl::unexpected(std::string("Failed to initialize service: ") + e.what());
     }
 }

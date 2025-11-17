@@ -21,26 +21,45 @@ tl::expected<AppConfig, std::string> load_config(const std::string& file_path) {
 
     // 创建配置对象，使用默认值初始化
     AppConfig cfg;
-    // 读取 IPC 套接字路径，如果不存在则使用默认值
+    // 初始化通道配置为默认值
+    cfg.channels = fpvcar::motorconfig::DEFAULT_CHANNELS;
+    
+    // 读取可选配置项，如果不存在则使用默认值
     cfg.ipc_socket_path = j.value("ipc_socket_path", cfg.ipc_socket_path);
+    cfg.i2c_device_path = j.value("i2c_device_path", cfg.i2c_device_path);
+    cfg.pwm_frequency = j.value("pwm_frequency", cfg.pwm_frequency);
+    
+    // 解析PCA9685地址（可以是整数或十六进制字符串）
+    if (j.contains("pca9685_address")) {
+        if (j["pca9685_address"].is_number()) {
+            cfg.pca9685_address = j["pca9685_address"].get<uint8_t>();
+        } else if (j["pca9685_address"].is_string()) {
+            // 支持十六进制字符串，如 "0x40"
+            std::string addr_str = j["pca9685_address"].get<std::string>();
+            cfg.pca9685_address = static_cast<uint8_t>(std::stoul(addr_str, nullptr, 0));
+        }
+    }
 
-    // 解析引脚配置：必须存在且为对象类型
-    if (j.contains("pins") && j["pins"].is_object()) {
-        const auto& p = j["pins"]; // p为j["pins"]对象
-        // 解析四个电机的引脚配置（前左、前右、后左、后右）
-        // 每个电机有两个控制引脚（A 和 B）和一个待机引脚（stby）
-        cfg.pins.fl_pin_a = p.value("fl_pin_a", cfg.pins.fl_pin_a);
-        cfg.pins.fl_pin_b = p.value("fl_pin_b", cfg.pins.fl_pin_b);
-        cfg.pins.fr_pin_a = p.value("fr_pin_a", cfg.pins.fr_pin_a);
-        cfg.pins.fr_pin_b = p.value("fr_pin_b", cfg.pins.fr_pin_b);
-        cfg.pins.bl_pin_a = p.value("bl_pin_a", cfg.pins.bl_pin_a);
-        cfg.pins.bl_pin_b = p.value("bl_pin_b", cfg.pins.bl_pin_b);
-        cfg.pins.br_pin_a = p.value("br_pin_a", cfg.pins.br_pin_a);
-        cfg.pins.br_pin_b = p.value("br_pin_b", cfg.pins.br_pin_b);
-        cfg.pins.stby_pin = p.value("stby_pin", cfg.pins.stby_pin);
+    // 解析通道配置：必须存在且为对象类型
+    if (j.contains("channels") && j["channels"].is_object()) {
+        const auto& ch = j["channels"]; // ch为j["channels"]对象
+        // 解析四个电机的通道配置（前左、前右、后左、后右）
+        // 每个电机有3个通道：速度通道、方向通道1、方向通道2
+        cfg.channels.fl_channel_speed = ch.value("fl_channel_speed", cfg.channels.fl_channel_speed);
+        cfg.channels.fl_channel_1 = ch.value("fl_channel_1", cfg.channels.fl_channel_1);
+        cfg.channels.fl_channel_2 = ch.value("fl_channel_2", cfg.channels.fl_channel_2);
+        cfg.channels.fr_channel_speed = ch.value("fr_channel_speed", cfg.channels.fr_channel_speed);
+        cfg.channels.fr_channel_1 = ch.value("fr_channel_1", cfg.channels.fr_channel_1);
+        cfg.channels.fr_channel_2 = ch.value("fr_channel_2", cfg.channels.fr_channel_2);
+        cfg.channels.bl_channel_speed = ch.value("bl_channel_speed", cfg.channels.bl_channel_speed);
+        cfg.channels.bl_channel_1 = ch.value("bl_channel_1", cfg.channels.bl_channel_1);
+        cfg.channels.bl_channel_2 = ch.value("bl_channel_2", cfg.channels.bl_channel_2);
+        cfg.channels.br_channel_speed = ch.value("br_channel_speed", cfg.channels.br_channel_speed);
+        cfg.channels.br_channel_1 = ch.value("br_channel_1", cfg.channels.br_channel_1);
+        cfg.channels.br_channel_2 = ch.value("br_channel_2", cfg.channels.br_channel_2);
     } else {
-        // 引脚配置是必需的，缺失或格式错误则返回错误
-        return tl::unexpected(std::string("Missing or invalid 'pins' object in config: ") + file_path);
+        // 通道配置是必需的，缺失或格式错误则返回错误
+        return tl::unexpected(std::string("Missing or invalid 'channels' object in config: ") + file_path);
     }
 
     return cfg;

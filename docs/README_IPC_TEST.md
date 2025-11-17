@@ -21,6 +21,10 @@
    - `moveBackward` - 后退
    - `turnLeft` - 左转
    - `turnRight` - 右转
+   - `moveForwardAndTurnLeft` - 前进并左转
+   - `moveForwardAndTurnRight` - 前进并右转
+   - `moveBackwardAndTurnLeft` - 后退并左转
+   - `moveBackwardAndTurnRight` - 后退并右转
    - `stopAll` - 停止所有动作
 
 ## 测试方法
@@ -41,6 +45,18 @@
 
 # 测试右转
 ./scripts/test_ipc.sh turnRight
+
+# 测试前进并左转
+./scripts/test_ipc.sh moveForwardAndTurnLeft
+
+# 测试前进并右转
+./scripts/test_ipc.sh moveForwardAndTurnRight
+
+# 测试后退并左转
+./scripts/test_ipc.sh moveBackwardAndTurnLeft
+
+# 测试后退并右转
+./scripts/test_ipc.sh moveBackwardAndTurnRight
 
 # 测试停止
 ./scripts/test_ipc.sh stopAll

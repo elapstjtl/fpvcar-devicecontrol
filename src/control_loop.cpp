@@ -77,6 +77,22 @@ void ControlLoop::run_loop() {
                         std::cout << "Turning right" << std::endl;
                         m_car.turnRight();
                         break;
+                    case DesiredState::MOVING_FORWARD_AND_TURN_LEFT:
+                        std::cout << "Moving forward and turning left" << std::endl;
+                        m_car.moveForwardAndTurnLeft();
+                        break;
+                    case DesiredState::MOVING_FORWARD_AND_TURN_RIGHT:
+                        std::cout << "Moving forward and turning right" << std::endl;
+                        m_car.moveForwardAndTurnRight();
+                        break;
+                    case DesiredState::MOVING_BACKWARD_AND_TURN_LEFT:
+                        std::cout << "Moving backward and turning left" << std::endl;
+                        m_car.moveBackwardAndTurnLeft();
+                        break;
+                    case DesiredState::MOVING_BACKWARD_AND_TURN_RIGHT:
+                        std::cout << "Moving backward and turning right" << std::endl;
+                        m_car.moveBackwardAndTurnRight();
+                        break;
                     case DesiredState::STOPPING:
                         std::cout << "Stopping" << std::endl;
                         m_car.stopAll();

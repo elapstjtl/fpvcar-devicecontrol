@@ -13,7 +13,7 @@ namespace fpvcar::device_control {
     public:
         /**
          * @brief 构造函数，初始化设备控制服务
-         * @param config 应用配置，包含 GPIO 引脚配置和 IPC 套接字路径
+         * @param config 应用配置，包含 I2C 通道配置和 IPC 套接字路径
          * @note 此构造函数会初始化电机控制器、请求处理器和 IPC 服务器
          */
         explicit DeviceControlService(const config::AppConfig& config);
